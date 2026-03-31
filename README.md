@@ -18,29 +18,6 @@ The project uses Jest for unit testing. To run the tests:
 npm test
 ```
 
-### Playwright Tests
-The project uses Playwright for end-to-end testing. These tests verify that the plugin works correctly inside CODAP. Playwright has lots of features including a VSCode plugin. Below are some basic steps to get started.
-
-Before running tests for the first time you need to install the Playwright browsers:
-```
-npx playwright install
-```
-
-After this you can run the tests without showing a browser or run them with a visible browser.
-
-#### Run without a visible browser
-```
-npm run test:playwright
-```
-If you want to view a test report of these tests you can run:
-```
-npx playwright show-report
-```
-#### Run showing the browser
-```
-npm run test:playwright:open
-```
-
 ### Testing in CODAP
 
 There are two ways to test the plugin in CODAP:
