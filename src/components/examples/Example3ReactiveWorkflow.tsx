@@ -36,11 +36,15 @@ const unwatchTablesMenu = (monitorRef: React.MutableRefObject<number | undefined
   monitorRef.current = undefined;
 };
 
+// Each Start takes a new token; Reset and unmount advance it so a pending Start can tell it is stale.
+const nextStartToken = (tokenRef: React.MutableRefObject<number>) => ++tokenRef.current;
+
 export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotification, setNotificationHandler }) => {
   const [phase, setPhase] = useState<Phase>("idle");
   const [newTableId, setNewTableId] = useState<string | null>(null);
   const phaseRef = useRef<Phase>("idle");
   const menuMonitorRef = useRef<number | undefined>(undefined);
+  const startTokenRef = useRef(0);
 
   useEffect(() => {
     setNotificationHandler((notice: any) => {
@@ -90,12 +94,13 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
     });
     return () => {
       setNotificationHandler(null);
-      phaseRef.current = "idle";
+      nextStartToken(startTokenRef);
       unwatchTablesMenu(menuMonitorRef);
     };
   }, [addNotification, setNotificationHandler]);
 
   const handleStart = async () => {
+    const startToken = nextStartToken(startTokenRef);
     phaseRef.current = "waiting";
     setPhase("waiting");
     setNewTableId(null);
@@ -103,7 +108,7 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
 
     unwatchTablesMenu(menuMonitorRef);
     const monitorId = await watchTablesMenu();
-    if (phaseRef.current !== "waiting") {
+    if (startToken !== startTokenRef.current) {
       deleteMonitor(monitorId);
       return;
     }
@@ -124,6 +129,7 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
   };
 
   const handleReset = () => {
+    nextStartToken(startTokenRef);
     unwatchTablesMenu(menuMonitorRef);
     codapInterface.sendRequest({
       action: "notify", resource: "interactiveFrame",
