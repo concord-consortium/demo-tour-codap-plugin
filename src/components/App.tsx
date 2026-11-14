@@ -6,10 +6,11 @@ import { Example3ReactiveWorkflow } from "./examples/Example3ReactiveWorkflow";
 import { Example4AutoAdvancingTutorial } from "./examples/Example4AutoAdvancingTutorial";
 import { Example5LocalizedTour } from "./examples/Example5LocalizedTour";
 import { Example6HighlightNoOverlay } from "./examples/Example6HighlightNoOverlay";
+import pkg from "../../package.json";
 import "./App.css";
 
 const kPluginName = "Tour API Demo";
-const kVersion = "0.1.0";
+const kVersion = pkg.version;
 const kInitialDimensions = { width: 380, height: 520 };
 
 const examples = [
