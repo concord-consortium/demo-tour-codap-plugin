@@ -4,23 +4,66 @@ import { ExampleProps } from "./types";
 
 type Phase = "idle" | "waiting" | "created";
 
+const kTablesButtonTestId = "tool-shelf-button-table";
+
+// CODAP reports a menu opening, by pointer or keyboard, as an `appear` on its trigger button.
+export const isTablesMenuOpenedNotice = (notice: any) =>
+  notice.resource === "uiNotificationNotice" &&
+  notice.values?.eventType === "appear" &&
+  notice.values?.target?.testId === kTablesButtonTestId;
+
+export const isTableCreatedNotice = (notice: any) =>
+  notice.resource === "component" &&
+  notice.values?.operation === "create" &&
+  notice.values?.diType === "caseTable";
+
+// Watches the Tables menu so the handler can clear "Click here" before its popover covers the menu.
+const watchTablesMenu = async () => {
+  const result: any = await codapInterface.sendRequest({
+    action: "notify", resource: "uiNotificationMonitor",
+    values: { eventTypes: ["appear"], targets: [kTablesButtonTestId] }
+  });
+  return result?.success ? result.values?.id as number : undefined;
+};
+
+const deleteMonitor = (monitorId: number | undefined) => {
+  if (monitorId == null) return;
+  codapInterface.sendRequest({ action: "delete", resource: `uiNotificationMonitor[${monitorId}]` });
+};
+
+const unwatchTablesMenu = (monitorRef: React.MutableRefObject<number | undefined>) => {
+  deleteMonitor(monitorRef.current);
+  monitorRef.current = undefined;
+};
+
+// Each Start takes a new token; Reset and unmount advance it so a pending Start can tell it is stale.
+const nextStartToken = (tokenRef: React.MutableRefObject<number>) => ++tokenRef.current;
+
 export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotification, setNotificationHandler }) => {
   const [phase, setPhase] = useState<Phase>("idle");
   const [newTableId, setNewTableId] = useState<string | null>(null);
   const phaseRef = useRef<Phase>("idle");
+  const menuMonitorRef = useRef<number | undefined>(undefined);
+  const startTokenRef = useRef(0);
 
   useEffect(() => {
     setNotificationHandler((notice: any) => {
+      if (phaseRef.current === "waiting" && isTablesMenuOpenedNotice(notice)) {
+        addNotification("Tables menu opened.");
+        codapInterface.sendRequest({
+          action: "notify", resource: "interactiveFrame",
+          values: { request: "clearHighlight" }
+        });
+      }
+
       // Listen for component creation
-      if (phaseRef.current === "waiting" &&
-          notice.resource === "component" &&
-          notice.values?.operation === "create" &&
-          notice.values?.type === "caseTable") {
+      if (phaseRef.current === "waiting" && isTableCreatedNotice(notice)) {
         const tableId = String(notice.values.id);
         setNewTableId(tableId);
         phaseRef.current = "created";
         setPhase("created");
         addNotification(`Table created! Component ID: ${tableId}`);
+        unwatchTablesMenu(menuMonitorRef);
 
         // Clear the toolbar highlight
         codapInterface.sendRequest({
@@ -37,7 +80,8 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
             popover: {
               title: "Your New Table",
               description: "Great! This is your case table. You can type data directly into it.",
-              side: "right"
+              side: "bottom",
+              align: "start"
             }
           }
         });
@@ -48,14 +92,27 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
         addNotification(`highlightUpdate: ${notice.values.type}`);
       }
     });
-    return () => setNotificationHandler(null);
+    return () => {
+      setNotificationHandler(null);
+      nextStartToken(startTokenRef);
+      unwatchTablesMenu(menuMonitorRef);
+    };
   }, [addNotification, setNotificationHandler]);
 
   const handleStart = async () => {
+    const startToken = nextStartToken(startTokenRef);
     phaseRef.current = "waiting";
     setPhase("waiting");
     setNewTableId(null);
     addNotification("Waiting for table creation...");
+
+    unwatchTablesMenu(menuMonitorRef);
+    const monitorId = await watchTablesMenu();
+    if (startToken !== startTokenRef.current) {
+      deleteMonitor(monitorId);
+      return;
+    }
+    menuMonitorRef.current = monitorId;
 
     // Highlight the Tables button
     await codapInterface.sendRequest({
@@ -72,6 +129,8 @@ export const Example3ReactiveWorkflow: React.FC<ExampleProps> = ({ addNotificati
   };
 
   const handleReset = () => {
+    nextStartToken(startTokenRef);
+    unwatchTablesMenu(menuMonitorRef);
     codapInterface.sendRequest({
       action: "notify", resource: "interactiveFrame",
       values: { request: "clearHighlight" }

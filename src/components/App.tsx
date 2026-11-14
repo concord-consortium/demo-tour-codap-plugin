@@ -6,10 +6,11 @@ import { Example3ReactiveWorkflow } from "./examples/Example3ReactiveWorkflow";
 import { Example4AutoAdvancingTutorial } from "./examples/Example4AutoAdvancingTutorial";
 import { Example5LocalizedTour } from "./examples/Example5LocalizedTour";
 import { Example6HighlightNoOverlay } from "./examples/Example6HighlightNoOverlay";
+import pkg from "../../package.json";
 import "./App.css";
 
 const kPluginName = "Tour API Demo";
-const kVersion = "0.1.0";
+const kVersion = pkg.version;
 const kInitialDimensions = { width: 380, height: 520 };
 
 const examples = [
@@ -37,6 +38,11 @@ export const App = () => {
 
     // Also listen for component notifications (for examples 3 & 4)
     codapInterface.on("notify", "component", (notice: any) => {
+      notificationHandlerRef.current?.(notice);
+    });
+
+    // And for UI notifications, which example 3 subscribes to
+    codapInterface.on("notify", "uiNotificationNotice", (notice: any) => {
       notificationHandlerRef.current?.(notice);
     });
   }, []);
