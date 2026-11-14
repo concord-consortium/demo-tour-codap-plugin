@@ -9,7 +9,7 @@ interface TutorialStep {
   onMatch?: (notice: any, state: Record<string, any>) => void;
 }
 
-const tutorialSteps: TutorialStep[] = [
+export const tutorialSteps: TutorialStep[] = [
   {
     instruction: "Create a graph by clicking the Graph button.",
     highlight: { tourKey: "toolShelf.graph" },
@@ -29,8 +29,10 @@ const tutorialSteps: TutorialStep[] = [
       popover: { description: "Drag an attribute here" }
     }),
     waitFor: (notice, state) =>
-      notice.resource?.startsWith("dataContext") &&
-      notice.values?.operation === "selectCases"
+      notice.resource === "component" &&
+      notice.values?.operation === "attributeChange" &&
+      String(notice.values?.id) === String(state.graphId) &&
+      notice.values?.axisOrientation === "horizontal"
   }
 ];
 

@@ -39,6 +39,11 @@ export const App = () => {
     codapInterface.on("notify", "component", (notice: any) => {
       notificationHandlerRef.current?.(notice);
     });
+
+    // And for UI notifications, which example 3 subscribes to
+    codapInterface.on("notify", "uiNotificationNotice", (notice: any) => {
+      notificationHandlerRef.current?.(notice);
+    });
   }, []);
 
   // Auto-scroll log
